@@ -101,6 +101,44 @@ const getDuration = (start: string, end: string): DurationObject => ({
 const mapAttendees = (attendees: AttendeeInCalendarEvent[] | TeamMember[]): Attendee[] =>
   attendees.map(({ email, name }) => ({ name, email, partstat: "NEEDS-ACTION" }));
 
+/**
+ * Adds SCHEDULE-AGENT=CLIENT to all ATTENDEE lines in an iCalendar string.
+ * This prevents CalDAV servers from sending their own invitations.
+ * @param iCalString - The iCalendar string to modify
+ * @returns The modified iCalendar string
+ */
+const addScheduleAgentClient = (iCalString: string): string => {
+  // Split the string into lines for processing
+  const lines = iCalString.split(/\r?\n/);
+
+  // Process each line
+  const modifiedLines = lines.map((line) => {
+    // Check if this is an ATTENDEE line
+    if (line.startsWith("ATTENDEE")) {
+      // Check if SCHEDULE-AGENT is already present (defensive coding)
+      if (line.includes("SCHEDULE-AGENT=")) {
+        return line;
+      }
+
+      // Find where to insert the SCHEDULE-AGENT parameter
+      // ATTENDEE lines can have parameters before the colon
+      const colonIndex = line.indexOf(":");
+      if (colonIndex === -1) {
+        // Malformed line, return as-is
+        return line;
+      }
+
+      // Insert SCHEDULE-AGENT=CLIENT before the colon
+      return `${line.substring(0, colonIndex)};SCHEDULE-AGENT=CLIENT${line.substring(colonIndex)}`;
+    }
+
+    return line;
+  });
+
+  // Join the lines back together
+  return modifiedLines.join("\r\n");
+};
+
 export default abstract class BaseCalendarService implements Calendar {
   private url = "";
   private credentials: Record<string, string> = {};
@@ -188,7 +226,7 @@ export default abstract class BaseCalendarService implements Calendar {
               },
               filename: `${uid}.ics`,
               // according to https://datatracker.ietf.org/doc/html/rfc4791#section-4.1, Calendar object resources contained in calendar collections MUST NOT specify the iCalendar METHOD property.
-              iCalString: iCalString.replace(/METHOD:[^\r\n]+\r\n/g, ""),
+              iCalString: addScheduleAgentClient(iCalString.replace(/METHOD:[^\r\n]+\r\n/g, "")),
               headers: this.headers,
             })
           )
@@ -256,7 +294,7 @@ export default abstract class BaseCalendarService implements Calendar {
             calendarObject: {
               url: calendarEvent.url,
               // ensures compliance with standard iCal string (known as iCal2.0 by some) required by various providers
-              data: iCalString?.replace(/METHOD:[^\r\n]+\r\n/g, ""),
+              data: addScheduleAgentClient(iCalString?.replace(/METHOD:[^\r\n]+\r\n/g, "") || ""),
               etag: calendarEvent?.etag,
             },
             headers: this.headers,
