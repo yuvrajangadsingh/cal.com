@@ -1,28 +1,6 @@
 import { describe, it, expect } from "vitest";
 
-// Helper function copied from CalendarService.ts for testing
-const addScheduleAgentClient = (iCalString: string): string => {
-  const lines = iCalString.split(/\r?\n/);
-
-  const modifiedLines = lines.map((line) => {
-    if (line.startsWith("ATTENDEE")) {
-      if (line.includes("SCHEDULE-AGENT=")) {
-        return line;
-      }
-
-      const colonIndex = line.indexOf(":");
-      if (colonIndex === -1) {
-        return line;
-      }
-
-      return `${line.substring(0, colonIndex)};SCHEDULE-AGENT=CLIENT${line.substring(colonIndex)}`;
-    }
-
-    return line;
-  });
-
-  return modifiedLines.join("\r\n");
-};
+import { addScheduleAgentClient } from "./CalendarService";
 
 describe("addScheduleAgentClient", () => {
   it("should add SCHEDULE-AGENT=CLIENT to simple ATTENDEE lines", () => {
@@ -199,5 +177,72 @@ describe("addScheduleAgentClient", () => {
     );
     // Organizer line should not be modified
     expect(result).toContain("ORGANIZER;CN=John Organizer:mailto:organizer@example.com");
+  });
+
+  it("should handle case-insensitive ATTENDEE lines", () => {
+    const input = [
+      "BEGIN:VCALENDAR",
+      "VERSION:2.0",
+      "BEGIN:VEVENT",
+      "attendee:mailto:lowercase@example.com",
+      "Attendee:mailto:capitalized@example.com",
+      "ATTENDEE:mailto:uppercase@example.com",
+      "END:VEVENT",
+      "END:VCALENDAR",
+    ].join("\n");
+
+    const expected = [
+      "BEGIN:VCALENDAR",
+      "VERSION:2.0",
+      "BEGIN:VEVENT",
+      "attendee;SCHEDULE-AGENT=CLIENT:mailto:lowercase@example.com",
+      "Attendee;SCHEDULE-AGENT=CLIENT:mailto:capitalized@example.com",
+      "ATTENDEE;SCHEDULE-AGENT=CLIENT:mailto:uppercase@example.com",
+      "END:VEVENT",
+      "END:VCALENDAR",
+    ].join("\r\n");
+
+    const result = addScheduleAgentClient(input);
+    expect(result).toBe(expected);
+  });
+
+  it("should handle folded lines (RFC 5545 line folding)", () => {
+    const input = [
+      "BEGIN:VCALENDAR",
+      "VERSION:2.0",
+      "BEGIN:VEVENT",
+      "ATTENDEE;CUTYPE=INDIVIDUAL;ROLE=REQ-PARTICIPANT;PARTSTAT=NEEDS-ACTION;CN=",
+      ' "Very Long Name That Causes Line Folding":mailto:verylongemailaddress@exam',
+      " ple.com",
+      "END:VEVENT",
+      "END:VCALENDAR",
+    ].join("\n");
+
+    const result = addScheduleAgentClient(input);
+
+    // The folded line should be unfolded and processed as one line
+    expect(result).toContain(
+      'ATTENDEE;CUTYPE=INDIVIDUAL;ROLE=REQ-PARTICIPANT;PARTSTAT=NEEDS-ACTION;CN="Very Long Name That Causes Line Folding";SCHEDULE-AGENT=CLIENT:mailto:verylongemailaddress@example.com'
+    );
+  });
+
+  it("should not add SCHEDULE-AGENT if already present (case-insensitive)", () => {
+    const input = [
+      "BEGIN:VCALENDAR",
+      "VERSION:2.0",
+      "BEGIN:VEVENT",
+      "ATTENDEE;schedule-agent=CLIENT:mailto:lowercase@example.com",
+      "ATTENDEE;Schedule-Agent=SERVER:mailto:mixedcase@example.com",
+      "ATTENDEE;SCHEDULE-AGENT=CLIENT:mailto:uppercase@example.com",
+      "END:VEVENT",
+      "END:VCALENDAR",
+    ].join("\n");
+
+    const result = addScheduleAgentClient(input);
+
+    // None of these should be modified since they already have SCHEDULE-AGENT
+    expect(result).toContain("ATTENDEE;schedule-agent=CLIENT:mailto:lowercase@example.com");
+    expect(result).toContain("ATTENDEE;Schedule-Agent=SERVER:mailto:mixedcase@example.com");
+    expect(result).toContain("ATTENDEE;SCHEDULE-AGENT=CLIENT:mailto:uppercase@example.com");
   });
 });

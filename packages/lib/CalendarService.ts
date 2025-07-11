@@ -107,16 +107,20 @@ const mapAttendees = (attendees: AttendeeInCalendarEvent[] | TeamMember[]): Atte
  * @param iCalString - The iCalendar string to modify
  * @returns The modified iCalendar string
  */
-const addScheduleAgentClient = (iCalString: string): string => {
+export const addScheduleAgentClient = (iCalString: string): string => {
+  // First, unfold any folded lines (RFC 5545 section 3.1)
+  const unfoldedString = iCalString.replace(/\r?\n[ \t]/g, "");
+
   // Split the string into lines for processing
-  const lines = iCalString.split(/\r?\n/);
+  const lines = unfoldedString.split(/\r?\n/);
 
   // Process each line
   const modifiedLines = lines.map((line) => {
-    // Check if this is an ATTENDEE line
-    if (line.startsWith("ATTENDEE")) {
+    // Check if this is an ATTENDEE line (case-insensitive)
+    if (line.match(/^ATTENDEE/i)) {
       // Check if SCHEDULE-AGENT is already present (defensive coding)
-      if (line.includes("SCHEDULE-AGENT=")) {
+      // Case-insensitive check as per RFC 5545
+      if (line.match(/SCHEDULE-AGENT=/i)) {
         return line;
       }
 
