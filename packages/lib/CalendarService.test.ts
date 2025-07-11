@@ -274,4 +274,36 @@ describe("addScheduleAgentClient", () => {
     const fullAttendee = lines[attendeeLineIndex] + lines[attendeeLineIndex + 1].substring(1);
     expect(fullAttendee).toContain("SCHEDULE-AGENT=CLIENT");
   });
+
+  it("should handle UTF-8 characters correctly when folding (count bytes not characters)", () => {
+    const input = [
+      "BEGIN:VCALENDAR",
+      "VERSION:2.0",
+      "BEGIN:VEVENT",
+      // String with emoji and special characters that take multiple bytes
+      'ATTENDEE;CN="Test User 你好 🎉 with long name to exceed limit":mailto:test@example.com',
+      "END:VEVENT",
+      "END:VCALENDAR",
+    ].join("\n");
+
+    const result = addScheduleAgentClient(input);
+    const lines = result.split("\r\n");
+
+    // Find all lines that are part of the ATTENDEE
+    const attendeeLineIndex = lines.findIndex((line) => line.match(/^ATTENDEE/i));
+    expect(attendeeLineIndex).toBeGreaterThan(-1);
+
+    // Check that no line exceeds 75 bytes (octets)
+    for (let i = attendeeLineIndex; i < lines.length; i++) {
+      const line = lines[i];
+      if (!line.match(/^ATTENDEE/i) && !line.match(/^ /)) break;
+
+      const lineBytes = Buffer.from(line, "utf8").length;
+      expect(lineBytes).toBeLessThanOrEqual(75);
+    }
+
+    // Verify SCHEDULE-AGENT=CLIENT was added
+    const unfoldedResult = result.replace(/\r?\n\s/g, "");
+    expect(unfoldedResult).toContain("SCHEDULE-AGENT=CLIENT");
+  });
 });

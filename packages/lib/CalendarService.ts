@@ -142,21 +142,50 @@ export const addScheduleAgentClient = (iCalString: string): string => {
   // Re-fold long lines according to RFC 5545 (75 octet limit)
   const refoldedLines: string[] = [];
   modifiedLines.forEach((line) => {
-    // RFC 5545 specifies a 75 octet limit, but we need to be careful with UTF-8
-    // For safety, we'll use character count as an approximation
-    if (line.length <= 75) {
+    // RFC 5545 specifies a 75 octet limit - we need to count bytes, not characters
+    const lineBytes = Buffer.from(line, "utf8");
+
+    if (lineBytes.length <= 75) {
       refoldedLines.push(line);
     } else {
-      // Fold long lines
-      let remaining = line;
-      refoldedLines.push(remaining.substring(0, 75));
-      remaining = remaining.substring(75);
+      // Fold long lines by bytes, not characters
+      let remainingBytes = lineBytes;
+      const offset = 0;
 
-      while (remaining.length > 0) {
-        // Continuation lines start with a space (RFC 5545 section 3.1)
-        const chunk = remaining.substring(0, 74); // 74 because of the leading space
-        refoldedLines.push(` ${chunk}`);
-        remaining = remaining.substring(74);
+      // First line - up to 75 bytes
+      let chunkSize = 75;
+      while (chunkSize > 0 && offset + chunkSize > 0) {
+        // Ensure we don't split in the middle of a UTF-8 character
+        const testChunk = remainingBytes.subarray(0, chunkSize);
+        const testString = testChunk.toString("utf8");
+        const testBytes = Buffer.from(testString, "utf8");
+
+        if (testBytes.length === testChunk.length) {
+          // Valid UTF-8 boundary
+          refoldedLines.push(testString);
+          remainingBytes = remainingBytes.subarray(chunkSize);
+          break;
+        }
+        // Try a smaller chunk to avoid splitting UTF-8 characters
+        chunkSize--;
+      }
+
+      // Continuation lines - up to 74 bytes (accounting for leading space)
+      while (remainingBytes.length > 0) {
+        chunkSize = 74;
+        while (chunkSize > 0) {
+          const testChunk = remainingBytes.subarray(0, chunkSize);
+          const testString = testChunk.toString("utf8");
+          const testBytes = Buffer.from(testString, "utf8");
+
+          if (testBytes.length === testChunk.length) {
+            // Valid UTF-8 boundary
+            refoldedLines.push(` ${testString}`);
+            remainingBytes = remainingBytes.subarray(chunkSize);
+            break;
+          }
+          chunkSize--;
+        }
       }
     }
   });
