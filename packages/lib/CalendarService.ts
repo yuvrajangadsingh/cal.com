@@ -139,8 +139,30 @@ export const addScheduleAgentClient = (iCalString: string): string => {
     return line;
   });
 
+  // Re-fold long lines according to RFC 5545 (75 octet limit)
+  const refoldedLines: string[] = [];
+  modifiedLines.forEach((line) => {
+    // RFC 5545 specifies a 75 octet limit, but we need to be careful with UTF-8
+    // For safety, we'll use character count as an approximation
+    if (line.length <= 75) {
+      refoldedLines.push(line);
+    } else {
+      // Fold long lines
+      let remaining = line;
+      refoldedLines.push(remaining.substring(0, 75));
+      remaining = remaining.substring(75);
+
+      while (remaining.length > 0) {
+        // Continuation lines start with a space (RFC 5545 section 3.1)
+        const chunk = remaining.substring(0, 74); // 74 because of the leading space
+        refoldedLines.push(` ${chunk}`);
+        remaining = remaining.substring(74);
+      }
+    }
+  });
+
   // Join the lines back together
-  return modifiedLines.join("\r\n");
+  return refoldedLines.join("\r\n");
 };
 
 export default abstract class BaseCalendarService implements Calendar {
