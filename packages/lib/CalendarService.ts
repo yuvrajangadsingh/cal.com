@@ -281,7 +281,7 @@ export default abstract class BaseCalendarService implements Calendar {
               },
               filename: `${uid}.ics`,
               // according to https://datatracker.ietf.org/doc/html/rfc4791#section-4.1, Calendar object resources contained in calendar collections MUST NOT specify the iCalendar METHOD property.
-              iCalString: addScheduleAgentClient(iCalString.replace(/METHOD:[^\r\n]+\r\n/g, "")),
+              iCalString: addScheduleAgentClient(iCalString.replace(/METHOD:[^\r\n]+\r?\n/gi, "")),
               headers: this.headers,
             })
           )
