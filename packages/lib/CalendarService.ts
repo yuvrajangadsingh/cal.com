@@ -349,7 +349,7 @@ export default abstract class BaseCalendarService implements Calendar {
             calendarObject: {
               url: calendarEvent.url,
               // ensures compliance with standard iCal string (known as iCal2.0 by some) required by various providers
-              data: addScheduleAgentClient(iCalString?.replace(/METHOD:[^\r\n]+\r\n/g, "") || ""),
+              data: addScheduleAgentClient(iCalString?.replace(/METHOD:[^\r\n]+\r?\n/gi, "") || ""),
               etag: calendarEvent?.etag,
             },
             headers: this.headers,
