@@ -252,7 +252,6 @@ export default abstract class BaseCalendarService implements Calendar {
         attendees: this.getAttendees(event),
         // Add timezone information for better CalDAV compatibility
         startOutputType: "utc",
-        timezone: event.organizer.timeZone,
         /** according to https://datatracker.ietf.org/doc/html/rfc2446#section-3.2.1, in a published iCalendar component.
          * "Attendees" MUST NOT be present
          * `attendees: this.getAttendees(event.attendees),`
@@ -333,7 +332,6 @@ export default abstract class BaseCalendarService implements Calendar {
         attendees: this.getAttendees(event),
         // Add timezone information for better CalDAV compatibility
         startOutputType: "utc",
-        timezone: event.organizer.timeZone,
       });
 
       if (error) {
