@@ -30,9 +30,9 @@ export function getiCalEventAsString(
 
   const icsEvent = createEvent({
     uid,
-    startInputType: "utc",
+    startInputType: "local",
+    startOutputType: "utc",
     start: dayjs(booking.startTime.toISOString() || "")
-      .utc()
       .toArray()
       .slice(0, 6)
       .map((v, i) => (i === 1 ? v + 1 : v)) as DateArray,
