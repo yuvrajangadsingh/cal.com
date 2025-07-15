@@ -306,4 +306,39 @@ describe("addScheduleAgentClient", () => {
     const unfoldedResult = result.replace(/\r?\n\s/g, "");
     expect(unfoldedResult).toContain("SCHEDULE-AGENT=CLIENT");
   });
+
+  it("should handle complex iCalendar with multiple attendees and timezone info", () => {
+    const input = [
+      "BEGIN:VCALENDAR",
+      "VERSION:2.0",
+      "PRODID:-//Cal.com Inc.//Cal.com Event//EN",
+      "BEGIN:VEVENT",
+      "UID:test-event-123",
+      "DTSTART;TZID=America/New_York:20240115T140000",
+      "DTEND;TZID=America/New_York:20240115T150000", 
+      "SUMMARY:Team Meeting with Timezone",
+      "ORGANIZER;CN=John Organizer:mailto:organizer@example.com",
+      "ATTENDEE;CN=Alice Smith;PARTSTAT=NEEDS-ACTION:mailto:alice@example.com",
+      "ATTENDEE;CN=Bob Johnson;PARTSTAT=TENTATIVE:mailto:bob@example.com",
+      "ATTENDEE;CN=Charlie Brown;PARTSTAT=ACCEPTED:mailto:charlie@example.com",
+      "END:VEVENT",
+      "END:VCALENDAR",
+    ].join("\n");
+
+    const result = addScheduleAgentClient(input);
+
+    // Verify all attendees get SCHEDULE-AGENT=CLIENT
+    const attendeeCount = (result.match(/ATTENDEE/gi) || []).length;
+    const scheduleAgentCount = (result.match(/SCHEDULE-AGENT=CLIENT/gi) || []).length;
+    expect(scheduleAgentCount).toBe(attendeeCount);
+
+    // Verify timezone information is preserved
+    expect(result).toContain("TZID=America/New_York");
+    
+    // Verify all attendees have SCHEDULE-AGENT=CLIENT (emails may be folded)
+    const unfoldedResult = result.replace(/\r?\n\s/g, "");
+    expect(unfoldedResult).toContain("alice@example.com");
+    expect(unfoldedResult).toContain("bob@example.com");
+    expect(unfoldedResult).toContain("charlie@example.com");
+  });
 });

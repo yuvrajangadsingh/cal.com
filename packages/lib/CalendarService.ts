@@ -235,12 +235,14 @@ export default abstract class BaseCalendarService implements Calendar {
   async createEvent(event: CalendarServiceEvent, credentialId: number): Promise<NewCalendarEventType> {
     try {
       const calendars = await this.listCalendars(event);
-      const uid = uuidv4();
+      // Use event.uid if available for consistency across all calendar invitations
+      const uid = event.uid || uuidv4();
 
       // We create local ICS files
       const { error, value: iCalString } = createEvent({
         uid,
-        startInputType: "utc",
+        // Use the organizer's timezone instead of UTC for better calendar compatibility
+        startInputType: "local",
         start: convertDate(event.startTime),
         duration: getDuration(event.startTime, event.endTime),
         title: event.title,
@@ -248,6 +250,9 @@ export default abstract class BaseCalendarService implements Calendar {
         location: getLocation(event),
         organizer: { email: event.organizer.email, name: event.organizer.name },
         attendees: this.getAttendees(event),
+        // Add timezone information for better CalDAV compatibility
+        startOutputType: "utc",
+        timezone: event.organizer.timeZone,
         /** according to https://datatracker.ietf.org/doc/html/rfc2446#section-3.2.1, in a published iCalendar component.
          * "Attendees" MUST NOT be present
          * `attendees: this.getAttendees(event.attendees),`
@@ -317,7 +322,8 @@ export default abstract class BaseCalendarService implements Calendar {
       /** We generate the ICS files */
       const { error, value: iCalString } = createEvent({
         uid,
-        startInputType: "utc",
+        // Use the organizer's timezone instead of UTC for better calendar compatibility
+        startInputType: "local",
         start: convertDate(event.startTime),
         duration: getDuration(event.startTime, event.endTime),
         title: event.title,
@@ -325,6 +331,9 @@ export default abstract class BaseCalendarService implements Calendar {
         location: getLocation(event),
         organizer: { email: event.organizer.email, name: event.organizer.name },
         attendees: this.getAttendees(event),
+        // Add timezone information for better CalDAV compatibility
+        startOutputType: "utc",
+        timezone: event.organizer.timeZone,
       });
 
       if (error) {
