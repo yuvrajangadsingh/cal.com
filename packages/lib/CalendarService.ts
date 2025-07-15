@@ -150,11 +150,10 @@ export const addScheduleAgentClient = (iCalString: string): string => {
     } else {
       // Fold long lines by bytes, not characters
       let remainingBytes = lineBytes;
-      const offset = 0;
 
       // First line - up to 75 bytes
       let chunkSize = 75;
-      while (chunkSize > 0 && offset + chunkSize > 0) {
+      while (chunkSize > 0) {
         // Ensure we don't split in the middle of a UTF-8 character
         const testChunk = remainingBytes.subarray(0, chunkSize);
         const testString = testChunk.toString("utf8");
