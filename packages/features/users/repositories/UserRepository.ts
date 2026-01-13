@@ -1456,4 +1456,26 @@ export class UserRepository {
 
     return { email: user.email, username: user.username };
   }
+
+  /**
+   * Finds Cal.com users by their email addresses.
+   * Used to identify which booking attendees are Cal.com users for guest availability checking.
+   */
+  async findUsersByEmails({ emails }: { emails: string[] }) {
+    if (!emails || emails.length === 0) {
+      return [];
+    }
+
+    return this.prismaClient.user.findMany({
+      where: {
+        email: {
+          in: emails.map((e) => e.toLowerCase()),
+        },
+      },
+      select: {
+        id: true,
+        email: true,
+      },
+    });
+  }
 }
