@@ -788,7 +788,6 @@ export class AvailableSlotsService {
       return [];
     }
 
-    // Get the original booking with attendees
     const bookingRepo = this.dependencies.bookingRepo;
     const originalBooking = await bookingRepo.findBookingByUidWithAttendees({ uid: rescheduleUid });
 
@@ -796,7 +795,6 @@ export class AvailableSlotsService {
       return [];
     }
 
-    // Get attendee emails (excluding empty ones)
     const attendeeEmails = originalBooking.attendees
       .map((a) => a.email)
       .filter((email): email is string => Boolean(email));
@@ -805,7 +803,6 @@ export class AvailableSlotsService {
       return [];
     }
 
-    // Find which attendees are Cal.com users
     const userRepo = this.dependencies.userRepo;
     const calComUsers = await userRepo.findUsersByEmails({ emails: attendeeEmails });
 
@@ -817,7 +814,6 @@ export class AvailableSlotsService {
       `Found ${calComUsers.length} Cal.com users among ${attendeeEmails.length} attendees for reschedule`
     );
 
-    // Get their bookings in the date range
     const guestUserIds = calComUsers.map((u) => u.id);
     const guestEmails = calComUsers.map((u) => u.email);
 
