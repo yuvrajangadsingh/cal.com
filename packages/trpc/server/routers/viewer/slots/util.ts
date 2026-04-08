@@ -815,7 +815,8 @@ export class AvailableSlotsService {
     );
 
     const guestUserIds = calComUsers.map((u) => u.id);
-    const guestEmails = calComUsers.map((u) => u.email);
+    // Use matchedEmail (secondary if resolved via secondary) for booking lookups
+    const guestEmails = calComUsers.map((u) => (u as { matchedEmail?: string }).matchedEmail || u.email);
 
     const guestBookings = await bookingRepo.findBookingsByUserIdsAndDateRange({
       userIds: guestUserIds,

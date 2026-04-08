@@ -1466,16 +1466,46 @@ export class UserRepository {
       return [];
     }
 
-    return this.prismaClient.user.findMany({
+    const lowercased = emails.map((e) => e.toLowerCase());
+
+    // Check both primary email and verified secondary emails
+    const users = await this.prismaClient.user.findMany({
       where: {
-        email: {
-          in: emails.map((e) => e.toLowerCase()),
-        },
+        OR: [
+          { email: { in: lowercased, mode: "insensitive" } },
+          {
+            secondaryEmails: {
+              some: {
+                email: { in: lowercased, mode: "insensitive" },
+                emailVerified: { not: null },
+              },
+            },
+          },
+        ],
       },
       select: {
         id: true,
         email: true,
+        secondaryEmails: {
+          where: {
+            email: { in: lowercased, mode: "insensitive" },
+            emailVerified: { not: null },
+          },
+          select: { email: true },
+        },
       },
+    });
+
+    // Return users with the matched email (primary or secondary)
+    return users.map((u) => {
+      const matchedSecondary = u.secondaryEmails.find((se) =>
+        lowercased.includes(se.email.toLowerCase())
+      );
+      return {
+        id: u.id,
+        email: u.email,
+        matchedEmail: matchedSecondary?.email || u.email,
+      };
     });
   }
 }
